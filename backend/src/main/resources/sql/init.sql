@@ -254,19 +254,4 @@ CREATE TABLE IF NOT EXISTS t_chat_session (
     FOREIGN KEY (user2_id) REFERENCES t_user(id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- 初始数据：管理员账号 (密码: admin123)
-INSERT INTO t_user (username, password, phone, nickname, role) VALUES
-('admin', '$2a$10$Zh0TR31oPWS2oEdx9mEfN.n2.4dq6sjbfEW0TTntRYGf0ueH7Wi62', '13800000000', 'admin', 'ADMIN');
-
--- 初始数据：书籍类别
-INSERT INTO t_category (name, sort_order) VALUES
-('计算机科学', 1),
-('数学', 2),
-('英语外语', 3),
-('文学小说', 4),
-('经济管理', 5),
-('理工教材', 6),
-('社会科学', 7),
-('艺术设计', 8),
-('考试考证', 9),
-('其他', 10);
+-- 初始数据由应用启动时通过 DatabaseMigration 类插入（解决 Docker 环境中文编码问题）
