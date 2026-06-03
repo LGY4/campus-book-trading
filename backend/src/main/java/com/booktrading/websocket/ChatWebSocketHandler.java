@@ -77,14 +77,14 @@ public class ChatWebSocketHandler extends TextWebSocketHandler {
             chatSessionService.updateLastMessage(senderId, receiverId, displayMsg);
 
             // 构造发送给接收者的消息
-            java.util.Map<String, Object> msgMap = new java.util.HashMap<>();
-            msgMap.put("id", chatMsg.getId());
-            msgMap.put("senderId", senderId);
-            msgMap.put("receiverId", receiverId);
-            msgMap.put("content", content);
-            msgMap.put("type", msgType);
-            msgMap.put("createTime", chatMsg.getCreateTime().toString());
-            String jsonMsg = objectMapper.writeValueAsString(msgMap);
+            java.util.Map<String, Object> respMap = new java.util.HashMap<>();
+            respMap.put("id", chatMsg.getId());
+            respMap.put("senderId", senderId);
+            respMap.put("receiverId", receiverId);
+            respMap.put("content", content);
+            respMap.put("type", msgType);
+            respMap.put("createTime", chatMsg.getCreateTime().toString());
+            String jsonMsg = objectMapper.writeValueAsString(respMap);
 
             // 发送给接收者
             WebSocketSession receiverSession = sessions.get(receiverId);
