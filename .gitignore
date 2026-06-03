@@ -1,0 +1,40 @@
+# Java
+backend/target/
+*.class
+*.jar
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Docker volumes
+mysql_data/
+upload_data/
+
+# Env
+.env
+
+# Uploads (runtime)
+uploads/
+
+# Claude
+.claude/
+
+# Misc
+maven.zip
+apache-maven-3.9.6/
+my.ini
+backend.log
+frontend.log

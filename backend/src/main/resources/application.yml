@@ -1,0 +1,47 @@
+server:
+  port: ${SERVER_PORT:8088}
+
+spring:
+  aop:
+    proxy-target-class: true
+  datasource:
+    url: ${DB_URL:jdbc:mysql://localhost:3306/book_trading?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8&allowPublicKeyRetrieval=true}
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
+
+  jackson:
+    date-format: yyyy-MM-dd HH:mm:ss
+    time-zone: Asia/Shanghai
+
+mybatis-plus:
+  configuration:
+    map-underscore-to-camel-case: true
+    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+  global-config:
+    db-config:
+      id-type: auto
+      logic-delete-field: deleted
+      logic-delete-value: 1
+      logic-not-delete-value: 0
+  mapper-locations: classpath*:/mapper/**/*.xml
+
+jwt:
+  secret: Ym9va1RyYWRpbmdTZWNyZXRLZXlGb3JKV1RUb2tlbkdlbmVyYXRpb24yMDI0
+  expiration: 86400000
+
+file:
+  upload-path: ${UPLOAD_PATH:./uploads/}
+
+alipay:
+  app-id: "2021000100000001"
+  private-key: "YOUR_PRIVATE_KEY"
+  alipay-public-key: "YOUR_ALIPAY_PUBLIC_KEY"
+  gateway-url: "https://openapi-sandbox.dl.alipaydev.com/gateway.do"
+  return-url: "http://localhost:8080/pay/result"
+  notify-url: "http://localhost:8088/api/pay/notify"
