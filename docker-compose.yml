@@ -23,7 +23,7 @@ services:
         condition: service_healthy
     environment:
       SERVER_PORT: "8088"
-      DB_URL: "jdbc:mysql://mysql:3306/book_trading?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=utf8&allowPublicKeyRetrieval=true"
+      DB_URL: "jdbc:mysql://mysql:3306/book_trading?useSSL=false&serverTimezone=Asia/Shanghai&characterEncoding=UTF-8&allowPublicKeyRetrieval=true"
       DB_USERNAME: "root"
       DB_PASSWORD: "booktrading123"
       UPLOAD_PATH: "/app/uploads/"
