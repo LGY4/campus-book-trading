@@ -189,7 +189,7 @@
         </el-radio-group>
       </div>
       <el-empty v-else description="暂无收货地址">
-        <el-button type="primary" size="small" @click="$router.push('/profile')">去添加地址</el-button>
+        <el-button type="primary" size="small" @click="goAddAddress">去添加地址</el-button>
       </el-empty>
       <div slot="footer">
         <el-button @click="orderDialogVisible = false">取消</el-button>
@@ -431,6 +431,10 @@ export default {
       } catch (e) { this.$message.error('下单失败') } finally {
         this.orderLoading = false
       }
+    },
+    goAddAddress() {
+      this.orderDialogVisible = false
+      this.$router.push({ path: '/profile', query: { tab: 'address', action: 'add' } })
     },
     async handleFavorite() {
       try {
