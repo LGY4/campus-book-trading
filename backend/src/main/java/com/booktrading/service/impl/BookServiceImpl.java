@@ -83,12 +83,16 @@ public class BookServiceImpl extends ServiceImpl<BookMapper, Book> implements Bo
         }
         book.setSellerId(userId);
         if (!"SOLD".equals(existing.getStatus())) {
-            User seller = userService.getById(userId);
-            boolean autoApprove = isFullReputation(seller);
-            System.out.println("[BookService] updateBook sellerId=" + userId
-                    + " reputation=" + (seller != null ? seller.getReputationScore() : "null")
-                    + " autoApprove=" + autoApprove);
-            book.setStatus(autoApprove ? "ON_SALE" : "PENDING");
+            if (book.getQuantity() != null && book.getQuantity() <= 0) {
+                book.setStatus("OFF_SHELF");
+            } else {
+                User seller = userService.getById(userId);
+                boolean autoApprove = isFullReputation(seller);
+                System.out.println("[BookService] updateBook sellerId=" + userId
+                        + " reputation=" + (seller != null ? seller.getReputationScore() : "null")
+                        + " autoApprove=" + autoApprove);
+                book.setStatus(autoApprove ? "ON_SALE" : "PENDING");
+            }
         }
         updateById(book);
         Book result = getById(book.getId());
@@ -135,6 +139,7 @@ public class BookServiceImpl extends ServiceImpl<BookMapper, Book> implements Bo
     public IPage<BookVO> searchBooks(BookQueryDTO queryDTO) {
         LambdaQueryWrapper<Book> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Book::getStatus, "ON_SALE");
+        wrapper.gt(Book::getQuantity, 0);
 
         if (StringUtils.hasText(queryDTO.getKeyword())) {
             wrapper.and(w -> w.like(Book::getTitle, queryDTO.getKeyword())
@@ -175,6 +180,7 @@ public class BookServiceImpl extends ServiceImpl<BookMapper, Book> implements Bo
         }
         QueryWrapper<Book> qw = new QueryWrapper<>();
         qw.eq("status", "ON_SALE");
+        qw.gt("quantity", 0);
         qw.and(w -> w.like("title", keyword).or().like("author", keyword));
         qw.orderByDesc("view_count");
         IPage<Book> bookPage = page(new Page<>(page, size), qw);
@@ -255,6 +261,9 @@ public class BookServiceImpl extends ServiceImpl<BookMapper, Book> implements Bo
         if (book == null) {
             throw new BusinessException("图书不存在");
         }
+        if (book.getQuantity() == null || book.getQuantity() <= 0) {
+            throw new BusinessException("库存为0，无法上架");
+        }
         book.setStatus("ON_SALE");
         updateById(book);
         messageService.sendSystemMessage(book.getSellerId(),
@@ -311,6 +320,7 @@ public class BookServiceImpl extends ServiceImpl<BookMapper, Book> implements Bo
         if (!categoryIds.isEmpty()) {
             LambdaQueryWrapper<Book> wrapper = new LambdaQueryWrapper<>();
             wrapper.eq(Book::getStatus, "ON_SALE");
+            wrapper.gt(Book::getQuantity, 0);
             wrapper.in(Book::getCategoryId, categoryIds);
             if (!interactedBookIds.isEmpty()) wrapper.notIn(Book::getId, interactedBookIds);
             wrapper.orderByDesc(Book::getViewCount);
@@ -325,6 +335,7 @@ public class BookServiceImpl extends ServiceImpl<BookMapper, Book> implements Bo
             int remaining = limit - result.size();
             LambdaQueryWrapper<Book> wrapper = new LambdaQueryWrapper<>();
             wrapper.eq(Book::getStatus, "ON_SALE");
+            wrapper.gt(Book::getQuantity, 0);
             if (!excludeIds.isEmpty()) wrapper.notIn(Book::getId, excludeIds);
             wrapper.orderByDesc(Book::getCreateTime);
             wrapper.last("LIMIT " + remaining);
@@ -342,6 +353,7 @@ public class BookServiceImpl extends ServiceImpl<BookMapper, Book> implements Bo
     private List<BookVO> getLatestBooks(int limit) {
         LambdaQueryWrapper<Book> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Book::getStatus, "ON_SALE");
+        wrapper.gt(Book::getQuantity, 0);
         wrapper.orderByDesc(Book::getCreateTime);
         wrapper.last("LIMIT " + limit);
         return list(wrapper).stream().map(this::toBookVO).collect(Collectors.toList());

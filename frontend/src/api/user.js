@@ -15,3 +15,7 @@ export const updateUserInfo = updateProfile
 export function changePassword(data) {
   return request.put('/user/password', data)
 }
+
+export function searchUsers(keyword) {
+  return request.get('/user/search', { params: { keyword } })
+}

@@ -9,6 +9,7 @@
             placeholder="搜索联系人"
             size="small"
             clearable
+            @input="handleSearchInput"
           />
         </div>
         <div class="session-list" v-loading="sessionLoading">
@@ -30,7 +31,24 @@
               <p class="session-msg">{{ s.lastMessage }}</p>
             </div>
           </div>
-          <el-empty v-if="!filteredSessions.length" description="暂无会话" :image-size="60" />
+          <div v-if="searchKey && searchResults.length" class="search-divider">
+            <span>搜索用户</span>
+          </div>
+          <div
+            v-for="u in searchResults"
+            :key="'search-' + u.id"
+            class="session-item"
+            @click="startChat(u)"
+          >
+            <el-avatar :src="u.avatar" :size="42" icon="el-icon-user-solid" />
+            <div class="session-info">
+              <div class="session-top">
+                <span class="session-name">{{ u.nickname || u.username }}</span>
+              </div>
+              <p class="session-msg">点击开始聊天</p>
+            </div>
+          </div>
+          <el-empty v-if="!filteredSessions.length && !searchResults.length" description="暂无会话" :image-size="60" />
         </div>
       </div>
 
@@ -89,6 +107,7 @@
 
 <script>
 import { getChatSessions, getChatHistoryByUser } from '@/api/chat'
+import { searchUsers } from '@/api/user'
 import request from '@/api/request'
 import { connectWebSocket, sendMessage, disconnectWebSocket } from '@/utils/websocket'
 import { mapState } from 'vuex'
@@ -104,7 +123,9 @@ export default {
       activeSessionInfo: {},
       messages: [],
       inputMsg: '',
-      searchKey: ''
+      searchKey: '',
+      searchResults: [],
+      searchTimer: null
     }
   },
   computed: {
@@ -249,6 +270,43 @@ export default {
         return d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
       }
       return d.toLocaleDateString('zh-CN') + ' ' + d.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit' })
+    },
+    handleSearchInput() {
+      if (this.searchTimer) clearTimeout(this.searchTimer)
+      if (!this.searchKey || this.searchKey.trim().length === 0) {
+        this.searchResults = []
+        return
+      }
+      this.searchTimer = setTimeout(async () => {
+        try {
+          const res = await searchUsers(this.searchKey.trim())
+          const users = res.data || []
+          const existingIds = new Set(this.sessions.map(s => s.userId))
+          this.searchResults = users.filter(u => !existingIds.has(u.id))
+        } catch (e) {
+          this.searchResults = []
+        }
+      }, 300)
+    },
+    startChat(user) {
+      const existing = this.sessions.find(s => s.userId === user.id)
+      if (existing) {
+        this.selectSession(existing)
+      } else {
+        const newSession = {
+          sessionId: null,
+          userId: user.id,
+          nickname: user.nickname || user.username,
+          avatar: user.avatar || '',
+          lastMessage: '',
+          lastTime: null,
+          unread: 0
+        }
+        this.sessions.unshift(newSession)
+        this.selectSession(newSession)
+      }
+      this.searchKey = ''
+      this.searchResults = []
     }
   }
 }
@@ -406,5 +464,11 @@ export default {
 .chat-empty p {
   margin-top: 12px;
   font-size: 14px;
+}
+.search-divider {
+  padding: 8px 12px 4px;
+  font-size: 12px;
+  color: #909399;
+  border-top: 1px solid #ebeef5;
 }
 </style>

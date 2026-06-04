@@ -6,6 +6,7 @@ import com.booktrading.dto.LoginRequest;
 import com.booktrading.dto.RegisterRequest;
 import com.booktrading.entity.User;
 
+import java.util.List;
 import java.util.Map;
 
 public interface UserService extends IService<User> {
@@ -23,4 +24,6 @@ public interface UserService extends IService<User> {
     void changePassword(Long id, String oldPwd, String newPwd);
 
     IPage<User> listUsers(int page, int size, String keyword, String status, String role);
+
+    List<User> searchUsers(String keyword, Long excludeUserId);
 }

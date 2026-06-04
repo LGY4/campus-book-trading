@@ -52,14 +52,24 @@
             <el-tag :type="statusTagType(row.status)" size="small">{{ statusLabel(row.status) }}</el-tag>
           </template>
         </el-table-column>
+        <el-table-column prop="quantity" label="库存" width="70">
+          <template slot-scope="{ row }">
+            <span :style="{ color: row.quantity <= 0 ? '#f56c6c' : '#303133', fontWeight: row.quantity <= 0 ? 'bold' : 'normal' }">{{ row.quantity }}</span>
+          </template>
+        </el-table-column>
         <el-table-column prop="viewCount" label="浏览量" width="80" />
         <el-table-column label="操作" width="280" fixed="right">
           <template slot-scope="{ row }">
-            <el-button
-              v-if="row.status === 'PENDING'"
-              type="success" size="mini"
-              @click="handleApprove(row)"
-            >通过</el-button>
+            <el-tooltip :disabled="row.quantity > 0" content="库存为0，无法上架" placement="top">
+              <span>
+                <el-button
+                  v-if="row.status === 'PENDING'"
+                  type="success" size="mini"
+                  :disabled="row.quantity <= 0"
+                  @click="handleApprove(row)"
+                >通过</el-button>
+              </span>
+            </el-tooltip>
             <el-button
               v-if="row.status === 'PENDING'"
               type="warning" size="mini"
@@ -70,11 +80,16 @@
               type="danger" size="mini"
               @click="handleRemove(row)"
             >下架</el-button>
-            <el-button
-              v-if="row.status === 'OFF_SHELF'"
-              type="success" size="mini"
-              @click="handlePutOn(row)"
-            >上架</el-button>
+            <el-tooltip :disabled="row.quantity > 0" content="库存为0，无法上架" placement="top">
+              <span>
+                <el-button
+                  v-if="row.status === 'OFF_SHELF'"
+                  type="success" size="mini"
+                  :disabled="row.quantity <= 0"
+                  @click="handlePutOn(row)"
+                >上架</el-button>
+              </span>
+            </el-tooltip>
           </template>
         </el-table-column>
       </el-table>

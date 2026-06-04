@@ -16,6 +16,8 @@ import java.util.Map;
 
 import java.io.File;
 import java.io.IOException;
+import java.util.List;
+import java.util.HashMap;
 import java.util.UUID;
 
 @RestController
@@ -108,6 +110,22 @@ public class UserController {
         String newPwd = body.getOrDefault("newPwd", body.get("newPassword"));
         userService.changePassword(currentUser.getId(), oldPwd, newPwd);
         return Result.ok("密码修改成功");
+    }
+
+    @GetMapping("/search")
+    public Result<?> searchUsers(@RequestParam String keyword) {
+        Long currentUserId = currentUser.getId();
+        List<User> users = userService.searchUsers(keyword, currentUserId);
+        List<Map<String, Object>> result = new java.util.ArrayList<>();
+        for (User u : users) {
+            Map<String, Object> m = new HashMap<>();
+            m.put("id", u.getId());
+            m.put("username", u.getUsername());
+            m.put("nickname", u.getNickname());
+            m.put("avatar", u.getAvatar());
+            result.add(m);
+        }
+        return Result.ok(result);
     }
 
     // ---- Address sub-routes ----

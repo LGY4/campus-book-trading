@@ -18,6 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 @Service
@@ -145,5 +146,20 @@ public class UserServiceImpl extends ServiceImpl<UserMapper, User> implements Us
         }
         wrapper.orderByDesc(User::getCreateTime);
         return page(new Page<>(page, size), wrapper);
+    }
+
+    @Override
+    public List<User> searchUsers(String keyword, Long excludeUserId) {
+        LambdaQueryWrapper<User> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(User::getStatus, "ACTIVE");
+        if (excludeUserId != null) {
+            wrapper.ne(User::getId, excludeUserId);
+        }
+        if (StringUtils.hasText(keyword)) {
+            wrapper.and(w -> w.like(User::getUsername, keyword)
+                    .or().like(User::getNickname, keyword));
+        }
+        wrapper.last("LIMIT 20");
+        return list(wrapper);
     }
 }

@@ -58,6 +58,15 @@ public class AdminBookController {
         if (status == null || !status.matches("ON_SALE|OFF_SHELF|SOLD|PENDING|REJECTED")) {
             throw new BusinessException("无效的状态值");
         }
+        if ("ON_SALE".equals(status)) {
+            Book book = bookService.getById(id);
+            if (book == null) {
+                throw new BusinessException("图书不存在");
+            }
+            if (book.getQuantity() == null || book.getQuantity() <= 0) {
+                throw new BusinessException("库存为0，无法上架");
+            }
+        }
         bookService.update(new LambdaUpdateWrapper<Book>()
                 .eq(Book::getId, id)
                 .set(Book::getStatus, status));

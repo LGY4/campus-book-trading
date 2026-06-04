@@ -76,10 +76,10 @@ public class OrderServiceImpl extends ServiceImpl<OrderMapper, Order> implements
         if (!updated) {
             throw new BusinessException("图书库存不足或已被下架");
         }
-        // 库存归零时标记为已预订
+        // 库存归零时自动下架
         Book updatedBook = bookService.getById(book.getId());
         if (updatedBook != null && updatedBook.getQuantity() != null && updatedBook.getQuantity() <= 0) {
-            updatedBook.setStatus("PENDING");
+            updatedBook.setStatus("OFF_SHELF");
             bookService.updateById(updatedBook);
         }
 
