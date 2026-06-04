@@ -9,7 +9,7 @@ services:
       - ./backend/src/main/resources/sql/init.sql:/docker-entrypoint-initdb.d/init.sql
       - ./backend/src/main/resources/mysql/my.cnf:/etc/mysql/conf.d/custom.cnf
     ports:
-      - "3306:3306"
+      - "3307:3306"
     healthcheck:
       test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
       interval: 10s
