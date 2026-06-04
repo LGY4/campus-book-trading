@@ -174,24 +174,58 @@
       <el-empty v-else description="暂无评价" />
     </el-card>
 
-    <el-dialog title="确认下单" :visible.sync="orderDialogVisible" width="500px">
-      <div v-if="addresses.length">
-        <p style="margin:0 0 12px;color:#909399;font-size:14px;">选择收货地址：</p>
-        <el-radio-group v-model="selectedAddressId" style="width:100%;">
-          <div v-for="addr in addresses" :key="addr.id" class="addr-radio-item">
-            <el-radio :label="addr.id">
-              <span class="addr-name">{{ addr.receiverName }}</span>
-              <span class="addr-phone">{{ addr.phone }}</span>
-              <el-tag v-if="addr.isDefault" type="danger" size="mini">默认</el-tag>
-              <p class="addr-detail">{{ addr.province }}{{ addr.city }}{{ addr.district }}{{ addr.detail }}</p>
-            </el-radio>
+    <el-dialog title="确认下单" :visible.sync="orderDialogVisible" width="520px" @open="onOrderDialogOpen">
+      <template v-if="!showAddrForm">
+        <div v-if="addresses.length">
+          <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px;">
+            <span style="color:#909399;font-size:14px;">选择收货地址：</span>
+            <el-button type="text" size="small" icon="el-icon-plus" @click="openAddrForm(null)">新增地址</el-button>
           </div>
-        </el-radio-group>
-      </div>
-      <el-empty v-else description="暂无收货地址">
-        <el-button type="primary" size="small" @click="goAddAddress">去添加地址</el-button>
-      </el-empty>
-      <div slot="footer">
+          <el-radio-group v-model="selectedAddressId" style="width:100%;">
+            <div v-for="addr in addresses" :key="addr.id" class="addr-radio-item" style="display:flex;align-items:center;justify-content:space-between;">
+              <el-radio :label="addr.id" style="flex:1;">
+                <span class="addr-name">{{ addr.receiverName }}</span>
+                <span class="addr-phone">{{ addr.phone }}</span>
+                <el-tag v-if="addr.isDefault" type="danger" size="mini">默认</el-tag>
+                <p class="addr-detail">{{ addr.province }}{{ addr.city }}{{ addr.district }}{{ addr.detail }}</p>
+              </el-radio>
+              <el-button type="text" size="mini" @click.stop="openAddrForm(addr)" style="flex-shrink:0;">编辑</el-button>
+            </div>
+          </el-radio-group>
+        </div>
+        <div v-else style="text-align:center;padding:20px 0;">
+          <p style="color:#909399;margin-bottom:16px;">暂无收货地址，请先添加</p>
+          <el-button type="primary" icon="el-icon-plus" @click="openAddrForm(null)">新增收货地址</el-button>
+        </div>
+      </template>
+      <template v-else>
+        <div style="margin-bottom:12px;">
+          <el-button type="text" icon="el-icon-arrow-left" @click="showAddrForm = false">返回地址列表</el-button>
+        </div>
+        <el-form ref="addrFormInline" :model="addrFormInline" :rules="addrRulesInline" label-width="80px">
+          <el-form-item label="收货人" prop="receiverName">
+            <el-input v-model="addrFormInline.receiverName" placeholder="请输入收货人姓名" />
+          </el-form-item>
+          <el-form-item label="手机号" prop="phone">
+            <el-input v-model="addrFormInline.phone" placeholder="请输入手机号" />
+          </el-form-item>
+          <el-form-item label="省市区" required>
+            <el-input v-model="addrFormInline.province" placeholder="省" style="width:30%;margin-right:3%;" />
+            <el-input v-model="addrFormInline.city" placeholder="市" style="width:30%;margin-right:3%;" />
+            <el-input v-model="addrFormInline.district" placeholder="区/县" style="width:30%;" />
+          </el-form-item>
+          <el-form-item label="详细地址" prop="detail">
+            <el-input v-model="addrFormInline.detail" type="textarea" :rows="2" placeholder="请输入详细地址" />
+          </el-form-item>
+          <el-form-item label="默认">
+            <el-switch v-model="addrFormInline.isDefault" />
+          </el-form-item>
+          <el-form-item>
+            <el-button type="primary" :loading="addrSaving" @click="saveAddrInline">保存地址</el-button>
+          </el-form-item>
+        </el-form>
+      </template>
+      <div v-if="!showAddrForm" slot="footer">
         <el-button @click="orderDialogVisible = false">取消</el-button>
         <el-button type="primary" :loading="orderLoading" :disabled="!selectedAddressId" @click="confirmOrder">确认下单</el-button>
       </div>
@@ -254,7 +288,7 @@ import { toggleFavorite, toggleWant } from '@/api/interaction'
 import { createOrder, getCompletedOrdersByBook } from '@/api/order'
 import { getBookComments, createComment } from '@/api/comment'
 import { createExchange } from '@/api/exchange'
-import { getAddressList } from '@/api/address'
+import { getAddressList, saveAddress as saveAddressApi } from '@/api/address'
 import { mapState } from 'vuex'
 
 export default {
@@ -279,6 +313,14 @@ export default {
       orderLoading: false,
       addresses: [],
       selectedAddressId: null,
+      showAddrForm: false,
+      addrFormInline: { id: null, receiverName: '', phone: '', province: '', city: '', district: '', detail: '', isDefault: false },
+      addrRulesInline: {
+        receiverName: [{ required: true, message: '请输入收货人', trigger: 'blur' }],
+        phone: [{ required: true, message: '请输入手机号', trigger: 'blur' }],
+        detail: [{ required: true, message: '请输入详细地址', trigger: 'blur' }]
+      },
+      addrSaving: false,
       followUpDialogVisible: false,
       followUpForm: { parentId: null, content: '', images: [] },
       followUpLoading: false,
@@ -432,9 +474,45 @@ export default {
         this.orderLoading = false
       }
     },
-    goAddAddress() {
-      this.orderDialogVisible = false
-      this.$router.push({ path: '/profile', query: { tab: 'address', action: 'add' } })
+    onOrderDialogOpen() {
+      this.showAddrForm = false
+      this.addrFormInline = { id: null, receiverName: '', phone: '', province: '', city: '', district: '', detail: '', isDefault: false }
+    },
+    openAddrForm(addr) {
+      if (addr) {
+        this.addrFormInline = { ...addr, isDefault: !!addr.isDefault }
+      } else {
+        this.addrFormInline = { id: null, receiverName: '', phone: '', province: '', city: '', district: '', detail: '', isDefault: false }
+      }
+      this.showAddrForm = true
+    },
+    async saveAddrInline() {
+      try {
+        await this.$refs.addrFormInline.validate()
+      } catch { return }
+      this.addrSaving = true
+      try {
+        const payload = { ...this.addrFormInline, isDefault: this.addrFormInline.isDefault ? 1 : 0 }
+        const res = await saveAddressApi(payload)
+        this.$message.success(this.addrFormInline.id ? '地址已更新' : '地址已添加')
+        this.showAddrForm = false
+        await this.reloadAddresses()
+        // Auto-select the newly saved address
+        if (res.data && res.data.id) {
+          this.selectedAddressId = res.data.id
+        } else if (!this.selectedAddressId && this.addresses.length) {
+          const def = this.addresses.find(a => a.isDefault)
+          this.selectedAddressId = def ? def.id : this.addresses[0].id
+        }
+      } catch (e) { this.$message.error('保存地址失败') } finally {
+        this.addrSaving = false
+      }
+    },
+    async reloadAddresses() {
+      try {
+        const addrRes = await getAddressList()
+        this.addresses = addrRes.data || []
+      } catch { /* ignore */ }
     },
     async handleFavorite() {
       try {

@@ -189,12 +189,6 @@ export default {
   created() {
     this.fetchInfo()
     this.fetchAddresses()
-    if (this.$route.query.tab === 'address') {
-      this.activeTab = 'address'
-      if (this.$route.query.action === 'add') {
-        this.$nextTick(() => this.openAddressDialog(null))
-      }
-    }
   },
   methods: {
     async fetchInfo() {

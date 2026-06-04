@@ -166,21 +166,25 @@ export default {
           return
         }
       } catch (e) { /* fallback */ }
-      // 2. Try algorithm recommendations
+      // 2. Algorithm recommendations + latest books auto-fill to 5
+      let recs = []
       try {
         const res = await getRecommendations(5)
-        if (res.data && res.data.length) {
-          this.recommended = res.data
-          this.bannerMode = false
-          return
-        }
+        recs = res.data || []
       } catch (e) { /* fallback */ }
-      // 3. Fallback: use latest books
-      try {
-        const res = await getBooks({ page: 1, size: 8 })
-        this.recommended = (res.data && res.data.records) || []
-        this.bannerMode = false
-      } catch (e) { /* noop */ }
+      if (recs.length < 5) {
+        try {
+          const excludeIds = recs.map(b => b.id)
+          const latestRes = await getBooks({ page: 1, size: 10 })
+          const latest = (latestRes.data && latestRes.data.records) || []
+          for (const b of latest) {
+            if (recs.length >= 5) break
+            if (!excludeIds.includes(b.id)) recs.push(b)
+          }
+        } catch (e) { /* noop */ }
+      }
+      this.recommended = recs
+      this.bannerMode = false
     },
     onCarouselChange() {},
     handleSearch() {
