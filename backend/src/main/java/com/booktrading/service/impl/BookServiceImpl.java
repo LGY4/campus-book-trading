@@ -140,6 +140,9 @@ public class BookServiceImpl extends ServiceImpl<BookMapper, Book> implements Bo
         LambdaQueryWrapper<Book> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Book::getStatus, "ON_SALE");
         wrapper.gt(Book::getQuantity, 0);
+        if (queryDTO.getUserId() != null) {
+            wrapper.ne(Book::getSellerId, queryDTO.getUserId());
+        }
 
         if (StringUtils.hasText(queryDTO.getKeyword())) {
             wrapper.and(w -> w.like(Book::getTitle, queryDTO.getKeyword())
@@ -181,6 +184,9 @@ public class BookServiceImpl extends ServiceImpl<BookMapper, Book> implements Bo
         QueryWrapper<Book> qw = new QueryWrapper<>();
         qw.eq("status", "ON_SALE");
         qw.gt("quantity", 0);
+        if (userId != null) {
+            qw.ne("seller_id", userId);
+        }
         qw.and(w -> w.like("title", keyword).or().like("author", keyword));
         qw.orderByDesc("view_count");
         IPage<Book> bookPage = page(new Page<>(page, size), qw);
@@ -288,7 +294,7 @@ public class BookServiceImpl extends ServiceImpl<BookMapper, Book> implements Bo
     public List<BookVO> getRecommendations(Long userId, int limit) {
         // 新用户或未登录：推荐最新发布的书籍
         if (userId == null) {
-            return getLatestBooks(limit);
+            return getLatestBooks(limit, null);
         }
 
         // 收集用户互动过的书籍ID（收藏 + 想要 + 浏览足迹）
@@ -315,12 +321,13 @@ public class BookServiceImpl extends ServiceImpl<BookMapper, Book> implements Bo
             }
         }
 
-        // 老用户：根据互动分类推荐热门书籍
+        // 老用户：根据互动分类推荐热门书籍（排除自己的）
         List<BookVO> result = new ArrayList<>();
         if (!categoryIds.isEmpty()) {
             LambdaQueryWrapper<Book> wrapper = new LambdaQueryWrapper<>();
             wrapper.eq(Book::getStatus, "ON_SALE");
             wrapper.gt(Book::getQuantity, 0);
+            wrapper.ne(Book::getSellerId, userId);
             wrapper.in(Book::getCategoryId, categoryIds);
             if (!interactedBookIds.isEmpty()) wrapper.notIn(Book::getId, interactedBookIds);
             wrapper.orderByDesc(Book::getViewCount);
@@ -336,6 +343,7 @@ public class BookServiceImpl extends ServiceImpl<BookMapper, Book> implements Bo
             LambdaQueryWrapper<Book> wrapper = new LambdaQueryWrapper<>();
             wrapper.eq(Book::getStatus, "ON_SALE");
             wrapper.gt(Book::getQuantity, 0);
+            wrapper.ne(Book::getSellerId, userId);
             if (!excludeIds.isEmpty()) wrapper.notIn(Book::getId, excludeIds);
             wrapper.orderByDesc(Book::getCreateTime);
             wrapper.last("LIMIT " + remaining);
@@ -344,16 +352,19 @@ public class BookServiceImpl extends ServiceImpl<BookMapper, Book> implements Bo
 
         // 仍为空则返回最新书籍
         if (result.isEmpty()) {
-            result = getLatestBooks(limit);
+            result = getLatestBooks(limit, userId);
         }
 
         return result;
     }
 
-    private List<BookVO> getLatestBooks(int limit) {
+    private List<BookVO> getLatestBooks(int limit, Long excludeSellerId) {
         LambdaQueryWrapper<Book> wrapper = new LambdaQueryWrapper<>();
         wrapper.eq(Book::getStatus, "ON_SALE");
         wrapper.gt(Book::getQuantity, 0);
+        if (excludeSellerId != null) {
+            wrapper.ne(Book::getSellerId, excludeSellerId);
+        }
         wrapper.orderByDesc(Book::getCreateTime);
         wrapper.last("LIMIT " + limit);
         return list(wrapper).stream().map(this::toBookVO).collect(Collectors.toList());
