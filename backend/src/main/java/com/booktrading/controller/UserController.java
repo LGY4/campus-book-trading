@@ -147,8 +147,8 @@ public class UserController {
     @PostMapping("/address/create")
     public Result<?> createAddress(@RequestBody Address address) {
         address.setUserId(currentUser.getId());
-        addressService.createAddress(address);
-        return Result.ok("创建成功");
+        Address saved = addressService.createAddress(address);
+        return Result.ok(saved);
     }
 
     @PutMapping("/address/update")

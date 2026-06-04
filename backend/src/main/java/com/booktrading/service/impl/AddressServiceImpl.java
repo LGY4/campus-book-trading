@@ -17,12 +17,13 @@ public class AddressServiceImpl extends ServiceImpl<AddressMapper, Address> impl
 
     @Override
     @Transactional
-    public void createAddress(Address address) {
+    public Address createAddress(Address address) {
         address.setIsDefault(address.getIsDefault() == null ? 0 : address.getIsDefault());
         if (Integer.valueOf(1).equals(address.getIsDefault())) {
             clearDefault(address.getUserId());
         }
         save(address);
+        return address;
     }
 
     @Override

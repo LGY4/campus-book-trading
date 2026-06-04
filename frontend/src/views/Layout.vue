@@ -192,6 +192,16 @@ export default {
   height: 60px;
   line-height: 60px;
   font-size: 15px;
+  overflow: visible;
+}
+.header-nav .el-menu-item .el-badge {
+  display: inline-block;
+  vertical-align: middle;
+}
+.header-nav .el-menu-item .el-badge__content.is-fixed {
+  top: 10px;
+  right: 0;
+  transform: translateX(100%) translateY(-100%);
 }
 .header-right {
   display: flex;

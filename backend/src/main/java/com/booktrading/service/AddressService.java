@@ -7,7 +7,7 @@ import java.util.List;
 
 public interface AddressService extends IService<Address> {
 
-    void createAddress(Address address);
+    Address createAddress(Address address);
 
     void updateAddress(Address address);
 

@@ -29,14 +29,14 @@
           </el-select>
         </el-form-item>
         <div class="price-row">
-          <el-form-item label="原价" prop="originalPrice">
-            <el-input-number v-model="form.originalPrice" :min="0" :precision="2" :step="1" controls-position="right" />
+          <el-form-item label="原价" prop="originalPrice" class="price-item">
+            <el-input-number v-model="form.originalPrice" :min="0" :precision="2" :step="1" controls-position="right" style="width:100%;" />
           </el-form-item>
-          <el-form-item label="售价" prop="sellingPrice">
-            <el-input-number v-model="form.sellingPrice" :min="0" :precision="2" :step="1" controls-position="right" />
+          <el-form-item label="售价" prop="sellingPrice" class="price-item">
+            <el-input-number v-model="form.sellingPrice" :min="0" :precision="2" :step="1" controls-position="right" style="width:100%;" />
           </el-form-item>
-          <el-form-item label="数量" prop="quantity">
-            <el-input-number v-model="form.quantity" :min="1" :max="999" controls-position="right" />
+          <el-form-item label="数量" prop="quantity" class="price-item price-item-small">
+            <el-input-number v-model="form.quantity" :min="1" :max="999" controls-position="right" style="width:100%;" />
           </el-form-item>
         </div>
         <el-form-item label="描述" prop="description">
@@ -212,7 +212,19 @@ export default {
 }
 .price-row {
   display: flex;
-  gap: 20px;
+  gap: 16px;
+  flex-wrap: wrap;
+}
+.price-item {
+  flex: 1;
+  min-width: 180px;
+}
+.price-item-small {
+  flex: 0 0 140px;
+  min-width: 120px;
+}
+.price-row >>> .el-input-number {
+  width: 100%;
 }
 .upload-tip {
   font-size: 12px;

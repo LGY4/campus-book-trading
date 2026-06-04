@@ -493,16 +493,16 @@ export default {
       this.addrSaving = true
       try {
         const payload = { ...this.addrFormInline, isDefault: this.addrFormInline.isDefault ? 1 : 0 }
-        const res = await saveAddressApi(payload)
+        await saveAddressApi(payload)
         this.$message.success(this.addrFormInline.id ? '地址已更新' : '地址已添加')
         this.showAddrForm = false
         await this.reloadAddresses()
-        // Auto-select the newly saved address
-        if (res.data && res.data.id) {
-          this.selectedAddressId = res.data.id
-        } else if (!this.selectedAddressId && this.addresses.length) {
-          const def = this.addresses.find(a => a.isDefault)
-          this.selectedAddressId = def ? def.id : this.addresses[0].id
+        // Auto-select the saved address
+        if (this.addresses.length) {
+          const saved = this.addrFormInline.id
+            ? this.addresses.find(a => a.id === this.addrFormInline.id)
+            : this.addresses.find(a => a.isDefault) || this.addresses[0]
+          this.selectedAddressId = saved ? saved.id : this.addresses[0].id
         }
       } catch (e) { this.$message.error('保存地址失败') } finally {
         this.addrSaving = false
