@@ -55,6 +55,59 @@ docker-compose up -d --build
 docker-compose down -v
 ```
 
+## 云端部署 (Railway)
+
+[Railway](https://railway.app) 提供免费额度（$5/月），支持 Docker 部署，自带 MySQL 插件。
+
+### 第一步：注册并创建项目
+
+1. 打开 https://railway.app，用 GitHub 账号登录
+2. 点击 **New Project** → **Provision MySQL**，创建数据库
+3. 记录 MySQL 插件的连接信息（自动生在 Variables 中）
+
+### 第二步：部署后端
+
+1. 点击 **+ New** → **GitHub Repo** → 选择 `campus-book-trading`
+2. Railway 检测到 `railway.json`，使用 `backend/Dockerfile` 构建
+3. 进入该服务的 **Variables**，添加：
+
+| 变量 | 值 |
+|------|------|
+| `SERVER_PORT` | `${{PORT}}` |
+| `DB_URL` | `${{MYSQL_URL}}`（引用 MySQL 插件变量） |
+| `DB_USERNAME` | `${{MYSQL_USER}}` |
+| `DB_PASSWORD` | `${{MYSQL_PASSWORD}}` |
+| `UPLOAD_PATH` | `/app/uploads/` |
+
+4. 等待构建完成，服务变为 Active
+
+### 第三步：部署前端
+
+1. 再次点击 **+ New** → **GitHub Repo** → 同一个仓库
+2. 进入服务 **Settings**：
+   - **Root Directory** 设为 `frontend`
+   - **Dockerfile Path** 设为 `Dockerfile`
+3. 在 **Variables** 中添加：
+
+| 变量 | 值 |
+|------|------|
+| `BACKEND_URL` | backend 服务的内网地址，格式 `backend.railway.internal:PORT`（在 backend 服务 Settings 中查看） |
+
+4. 等待构建完成，前端会获得公网 URL
+
+### 第四步：验证
+
+1. 访问前端公网 URL
+2. 用 `admin` / `admin123` 登录
+3. 测试浏览书籍、发布、聊天等功能
+
+### 注意事项
+
+- 文件上传存储在容器内，重新部署会丢失（演示用途可接受）
+- 免费额度 $5/月，轻度使用足够
+- MySQL 数据由 Railway 持久化管理
+- 首次构建较慢（下载 Maven 依赖），后续有缓存
+
 ## 本地开发
 
 ### 后端
