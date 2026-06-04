@@ -29,9 +29,7 @@ import org.springframework.util.StringUtils;
 
 import java.util.ArrayList;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -279,24 +277,15 @@ public class BookServiceImpl extends ServiceImpl<BookMapper, Book> implements Bo
 
     @Override
     public List<BookVO> getRecommendations(Long userId, int limit) {
+        // 新用户或未登录：推荐最新发布的书籍
         if (userId == null) {
-            LambdaQueryWrapper<Book> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(Book::getStatus, "ON_SALE");
-            wrapper.orderByDesc(Book::getCreateTime);
-            wrapper.last("LIMIT " + limit);
-            return list(wrapper).stream().map(this::toBookVO).collect(Collectors.toList());
+            return getLatestBooks(limit);
         }
 
-        // 1. 协同过滤："买了这本书的人还买了"
-        List<BookVO> collabRecs = getCollaborativeRecommendations(userId, limit);
-        if (collabRecs.size() >= limit) {
-            return collabRecs;
-        }
-
-        // 2. 基于分类的内容推荐（补充不足部分）
-        Set<Long> excludeIds = collabRecs.stream().map(BookVO::getId).collect(Collectors.toSet());
-        Set<Long> interactedBookIds = interactionService.getFavoriteBookIds(userId);
-        excludeIds.addAll(interactedBookIds);
+        // 收集用户互动过的书籍ID（收藏 + 想要 + 浏览足迹）
+        Set<Long> interactedBookIds = new java.util.HashSet<>();
+        interactedBookIds.addAll(interactionService.getFavoriteBookIds(userId));
+        interactedBookIds.addAll(interactionService.getWantedBookIds(userId));
 
         LambdaQueryWrapper<Interaction> viewWrapper = new LambdaQueryWrapper<>();
         viewWrapper.eq(Interaction::getUserId, userId)
@@ -304,11 +293,12 @@ public class BookServiceImpl extends ServiceImpl<BookMapper, Book> implements Bo
                 .orderByDesc(Interaction::getCreateTime)
                 .last("LIMIT 20");
         List<Interaction> views = interactionService.list(viewWrapper);
-        views.forEach(v -> excludeIds.add(v.getBookId()));
+        views.forEach(v -> interactedBookIds.add(v.getBookId()));
 
+        // 从互动书籍中提取分类ID
         Set<Long> categoryIds = new java.util.HashSet<>();
-        if (!excludeIds.isEmpty()) {
-            List<Book> interactedBooks = listByIds(new ArrayList<>(excludeIds));
+        if (!interactedBookIds.isEmpty()) {
+            List<Book> interactedBooks = listByIds(new ArrayList<>(interactedBookIds));
             for (Book b : interactedBooks) {
                 if (b.getCategoryId() != null) {
                     categoryIds.add(b.getCategoryId());
@@ -316,75 +306,45 @@ public class BookServiceImpl extends ServiceImpl<BookMapper, Book> implements Bo
             }
         }
 
-        int remaining = limit - collabRecs.size();
-        if (categoryIds.isEmpty()) {
-            LambdaQueryWrapper<Book> wrapper = new LambdaQueryWrapper<>();
-            wrapper.eq(Book::getStatus, "ON_SALE");
-            if (!excludeIds.isEmpty()) wrapper.notIn(Book::getId, excludeIds);
-            wrapper.orderByDesc(Book::getViewCount);
-            wrapper.last("LIMIT " + remaining);
-            List<BookVO> extra = list(wrapper).stream().map(this::toBookVO).collect(Collectors.toList());
-            collabRecs.addAll(extra);
-        } else {
+        // 老用户：根据互动分类推荐热门书籍
+        List<BookVO> result = new ArrayList<>();
+        if (!categoryIds.isEmpty()) {
             LambdaQueryWrapper<Book> wrapper = new LambdaQueryWrapper<>();
             wrapper.eq(Book::getStatus, "ON_SALE");
             wrapper.in(Book::getCategoryId, categoryIds);
-            if (!excludeIds.isEmpty()) wrapper.notIn(Book::getId, excludeIds);
+            if (!interactedBookIds.isEmpty()) wrapper.notIn(Book::getId, interactedBookIds);
             wrapper.orderByDesc(Book::getViewCount);
-            wrapper.last("LIMIT " + remaining);
-            List<BookVO> extra = list(wrapper).stream().map(this::toBookVO).collect(Collectors.toList());
-            collabRecs.addAll(extra);
+            wrapper.last("LIMIT " + limit);
+            result = list(wrapper).stream().map(this::toBookVO).collect(Collectors.toList());
         }
-        return collabRecs;
+
+        // 不足则用最新书籍补充
+        if (result.size() < limit) {
+            Set<Long> excludeIds = new java.util.HashSet<>(interactedBookIds);
+            result.forEach(vo -> excludeIds.add(vo.getId()));
+            int remaining = limit - result.size();
+            LambdaQueryWrapper<Book> wrapper = new LambdaQueryWrapper<>();
+            wrapper.eq(Book::getStatus, "ON_SALE");
+            if (!excludeIds.isEmpty()) wrapper.notIn(Book::getId, excludeIds);
+            wrapper.orderByDesc(Book::getCreateTime);
+            wrapper.last("LIMIT " + remaining);
+            result.addAll(list(wrapper).stream().map(this::toBookVO).collect(Collectors.toList()));
+        }
+
+        // 仍为空则返回最新书籍
+        if (result.isEmpty()) {
+            result = getLatestBooks(limit);
+        }
+
+        return result;
     }
 
-    /**
-     * 协同过滤：找到与当前用户购买过相同书籍的用户，推荐他们买过的其他书籍
-     */
-    private List<BookVO> getCollaborativeRecommendations(Long userId, int limit) {
-        // 找到当前用户已购买完成的书籍
-        LambdaQueryWrapper<Order> myOrders = new LambdaQueryWrapper<>();
-        myOrders.eq(Order::getBuyerId, userId)
-                .eq(Order::getStatus, "COMPLETED")
-                .select(Order::getBookId);
-        List<Long> myBookIds = orderService.list(myOrders).stream()
-                .map(Order::getBookId).collect(Collectors.toList());
-        if (myBookIds.isEmpty()) return new ArrayList<>();
-
-        // 找到也买了这些书的其他用户
-        LambdaQueryWrapper<Order> peerOrders = new LambdaQueryWrapper<>();
-        peerOrders.in(Order::getBookId, myBookIds)
-                .eq(Order::getStatus, "COMPLETED")
-                .ne(Order::getBuyerId, userId)
-                .select(Order::getBuyerId, Order::getBookId);
-        List<Order> peerOrderList = orderService.list(peerOrders);
-        if (peerOrderList.isEmpty()) return new ArrayList<>();
-
-        // 统计这些用户买的其他书籍（排除已买过的），按频次排序
-        Set<Long> myBookIdSet = new java.util.HashSet<>(myBookIds);
-        Map<Long, Long> bookFreq = new java.util.HashMap<>();
-        for (Order o : peerOrderList) {
-            if (!myBookIdSet.contains(o.getBookId())) {
-                bookFreq.merge(o.getBookId(), 1L, Long::sum);
-            }
-        }
-        if (bookFreq.isEmpty()) return new ArrayList<>();
-
-        // 取频次最高的书籍
-        List<Long> topBookIds = bookFreq.entrySet().stream()
-                .sorted(Map.Entry.<Long, Long>comparingByValue().reversed())
-                .limit(limit)
-                .map(Map.Entry::getKey)
-                .collect(Collectors.toList());
-
-        List<Book> books = listByIds(topBookIds);
-        // 保持推荐顺序
-        Map<Long, Book> bookMap = books.stream().collect(Collectors.toMap(Book::getId, b -> b, (a, b) -> a));
-        return topBookIds.stream()
-                .map(bookMap::get)
-                .filter(b -> b != null && "ON_SALE".equals(b.getStatus()))
-                .map(this::toBookVO)
-                .collect(Collectors.toList());
+    private List<BookVO> getLatestBooks(int limit) {
+        LambdaQueryWrapper<Book> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(Book::getStatus, "ON_SALE");
+        wrapper.orderByDesc(Book::getCreateTime);
+        wrapper.last("LIMIT " + limit);
+        return list(wrapper).stream().map(this::toBookVO).collect(Collectors.toList());
     }
 
     private BookVO toBookVO(Book book) {

@@ -168,7 +168,7 @@ export default {
       } catch (e) { /* fallback */ }
       // 2. Try algorithm recommendations
       try {
-        const res = await getRecommendations(8)
+        const res = await getRecommendations(5)
         if (res.data && res.data.length) {
           this.recommended = res.data
           this.bannerMode = false
